@@ -1,0 +1,104 @@
+kind: project
+metadata:
+  name: city-data
+  created: '2024-05-28T09:17:05.604000'
+spec:
+  functions:
+  - url: src/download-open-data.py
+    name: download-buildings
+    kind: job
+    image: mlrun/mlrun
+    handler: download_buildings
+    requirements:
+    - geopandas==0.13.2
+  - url: src/download-open-data.py
+    name: download-addresses
+    kind: job
+    image: mlrun/mlrun
+    handler: download_addresses
+    requirements:
+    - geopandas==0.13.2
+  - url: src/download-open-data.py
+    name: download-walls
+    kind: job
+    image: mlrun/mlrun
+    handler: download_walls
+    requirements:
+    - geopandas==0.13.2
+  - url: src/download-open-data.py
+    name: download-buidlings-volumes
+    kind: job
+    image: mlrun/mlrun
+    handler: download_buidlings_volumes
+    requirements:
+    - geopandas==0.13.2
+  - url: src/download-open-data.py
+    name: download-buildings-symbols
+    kind: job
+    image: mlrun/mlrun
+    handler: download_buildings_symbols
+    requirements:
+    - geopandas==0.13.2
+  - url: src/download-open-data.py
+    name: download-terrain
+    kind: job
+    image: mlrun/mlrun
+    handler: download_terrain
+    requirements:
+    - geopandas==0.13.2
+  - url: src/download-data.py
+    name: download-lidar
+    kind: job
+    image: mlrun/mlrun
+    handler: get_lidar
+  - url: src/download-data.py
+    name: download-dtm
+    kind: job
+    image: mlrun/mlrun
+    handler: get_dtm
+  - url: src/download-data.py
+    name: download-dsm
+    kind: job
+    image: mlrun/mlrun
+    handler: get_dsm
+  - url: src/download-data.py
+    name: download-ortofoto
+    kind: job
+    image: python:3.9
+    handler: get_ortofoto_tiff
+  - url: src/download-data.py
+    name: download-foto
+    kind: job
+    image: mlrun/mlrun
+    handler: get_foto
+  - url: src/share-data.py
+    name: share
+    kind: job
+    image: mlrun/mlrun
+    handler: share_files
+  - url: src/download-ortofoto-data.py
+    name: download-ortofoto-tiles
+    kind: job
+    image: python:3.9
+    handler: get_ortofoto
+    requirements:
+    - osmnx==1.9.2
+    - mercantile==1.2.1
+  - url: src/download-open-data.py
+    name: download-proximity-areas
+    kind: job
+    image: mlrun/mlrun
+    handler: download_areas
+    requirements:
+    - geopandas==0.13.2
+  workflows: []
+  artifacts: []
+  conda: ''
+  source: ''
+  desired_state: online
+  build:
+    commands: []
+    requirements: []
+  custom_packagers: []
+status:
+  state: online
