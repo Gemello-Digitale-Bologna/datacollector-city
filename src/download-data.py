@@ -115,35 +115,35 @@ def doc_files(s3, bucket: str, prefix: str, name: str):
     s3.upload_file(name +'.parquet', bucket, prefix + '/' + name +'.parquet', ExtraArgs={'ContentType': 'application/octet-stream'})
         
 @mlrun.handler()
-def get_lidar(context):
+def get_lidar(context, folder, target):
     s3 = boto3.client('s3',
                 endpoint_url=os.environ.get('S3_ENDPOINT_URL'),
                 aws_access_key_id=os.environ.get('AWS_ACCESS_KEY_ID'),
                 aws_secret_access_key=os.environ.get('AWS_SECRET_ACCESS_KEY'))
 
-    copy_files(context, "mimeType='application/vnd.google-apps.folder' and name='NUVOLA_CLASSIFICATA'", s3, "dataspace", "city-data/lidar/latest")
-    doc_files(s3, "dataspace", "city-data/lidar/latest", "lidar")
+    copy_files(context, f"mimeType='application/vnd.google-apps.folder' and name='{folder}'", s3, "dataspace", f"city-data/lidar/{target}")
+    doc_files(s3, "dataspace", f"city-data/lidar/{target}", "lidar")
     
     
 @mlrun.handler()
-def get_dtm(context):
+def get_dtm(context, folder, target):
     s3 = boto3.client('s3',
                 endpoint_url=os.environ.get('S3_ENDPOINT_URL'),
                 aws_access_key_id=os.environ.get('AWS_ACCESS_KEY_ID'),
                 aws_secret_access_key=os.environ.get('AWS_SECRET_ACCESS_KEY'))
 
-    copy_files(context, "mimeType='application/vnd.google-apps.folder' and name='DTM'", s3, "dataspace", "city-data/dtm/latest")
-    doc_files(s3, "dataspace", "city-data/dtm/latest", "dtm")
+    copy_files(context, f"mimeType='application/vnd.google-apps.folder' and name='{folder}'", s3, "dataspace", f"city-data/dtm/{target}")
+    doc_files(s3, "dataspace", f"city-data/dtm/{target}", "dtm")
     
 @mlrun.handler()
-def get_dsm(context):
+def get_dsm(context, folder, target):
     s3 = boto3.client('s3',
                 endpoint_url=os.environ.get('S3_ENDPOINT_URL'),
                 aws_access_key_id=os.environ.get('AWS_ACCESS_KEY_ID'),
                 aws_secret_access_key=os.environ.get('AWS_SECRET_ACCESS_KEY'))
 
-    copy_files(context, "mimeType='application/vnd.google-apps.folder' and name='DSM'", s3, "dataspace", "city-data/dsm/latest")
-    doc_files(s3, "dataspace", "city-data/dsm/latest", "dsm")
+    copy_files(context, f"mimeType='application/vnd.google-apps.folder' and name='{folder}'", s3, "dataspace", f"city-data/dsm/{target}")
+    doc_files(s3, "dataspace", f"city-data/dsm/{target}", "dsm")
     
 @mlrun.handler()
 def get_ortofoto_tiff(context):
