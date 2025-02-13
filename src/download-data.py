@@ -1,3 +1,4 @@
+
 import os
 
 from google.auth.transport.requests import Request
@@ -6,7 +7,6 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from googleapiclient.http import MediaIoBaseDownload
-import mlrun
 import json
 import boto3
 
@@ -16,29 +16,14 @@ import pandas as pd
 SCOPES = ["https://www.googleapis.com/auth/drive.readonly"]
 
 
-def getGService(context):
+def getGService(project, token_uri):
     creds = None
-    # The file token.json stores the user's access and refresh tokens, and is
-    # created automatically when the authorization flow completes for the first
-    # time.
-    
-    token_info_var = context.get_secret('GOOGLE_TOKEN')
-
-    if token_info_var is not None:
-        token_info = json.loads(token_info_var)
-        creds = Credentials.from_authorized_user_info(token_info, SCOPES)
-    # If there are no (valid) credentials available, let the user log in.
-    if not creds or not creds.valid:
-        if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
-    else:
-        raise Exception("No valid credentials")
-
+    token = token_uri.as_file()
     try:
+        token_info = json.load(open(token))
+        creds = Credentials.from_authorized_user_info(token_info, SCOPES)
         service = build("drive", "v3", credentials=creds)
-
     except HttpError as error:
-        # TODO(developer) - Handle errors from drive API.
         print(f"An error occurred: {error}")
 
     return service
@@ -92,12 +77,12 @@ def copy_rec(service, folder_id, s3, bucket: str, destination_path: str):
                     # return
         request = files.list_next(request, results)
 
-def copy_files(context, query: str, s3, bucket: str, destination_path: str):
-    service = getGService(context)
+def copy_files(project, query: str, s3, bucket: str, destination_path: str, token_uri):
+    service = getGService(project, token_uri)
     results = (service.files()
                .list(q=query, pageSize=1, fields="files(id, name, mimeType)", supportsAllDrives=True, includeItemsFromAllDrives=True)
                .execute())
-    
+    print(results.get("files"))
     root_items = results.get("files", [])
     for item in root_items:
         copy_rec(service, item["id"], s3, bucket, destination_path)
@@ -114,59 +99,27 @@ def doc_files(s3, bucket: str, prefix: str, name: str):
     df.to_parquet(name +'.parquet')
     s3.upload_file(name +'.parquet', bucket, prefix + '/' + name +'.parquet', ExtraArgs={'ContentType': 'application/octet-stream'})
         
-@mlrun.handler()
-def get_lidar(context, folder, target):
+def get_lidar(project, token_uri, folder, bucket, target: str = 'data'):
+    s3 = boto3.client('s3',
+                endpoint_url=os.environ.get('S3_ENDPOINT_URL'),
+                aws_access_key_id=os.environ.get('AWS_ACCESS_KEY_ID'),
+                aws_secret_access_key=os.environ.get('AWS_SECRET_ACCESS_KEY'))
+    copy_files(project, f"mimeType='application/vnd.google-apps.folder' and name='{folder}'", s3, bucket, f"city-data/lidar/{target}", token_uri)
+    doc_files(s3, bucket, f"city-data/lidar/{target}", "lidar")
+        
+def get_dtm(project, token_uri, folder, bucket, target: str = 'data'):
+    s3 = boto3.client('s3',
+                endpoint_url=os.environ.get('S3_ENDPOINT_URL'),
+                aws_access_key_id=os.environ.get('AWS_ACCESS_KEY_ID'),
+                aws_secret_access_key=os.environ.get('AWS_SECRET_ACCESS_KEY'))
+    copy_files(project, f"mimeType='application/vnd.google-apps.folder' and name='{folder}'", s3, bucket, f"city-data/dtm/{target}", token_uri)
+    doc_files(s3, bucket, f"city-data/dtm/{target}", "dtm")
+    
+def get_dsm(project, token_uri, folder, bucket, target: str = 'data'):
     s3 = boto3.client('s3',
                 endpoint_url=os.environ.get('S3_ENDPOINT_URL'),
                 aws_access_key_id=os.environ.get('AWS_ACCESS_KEY_ID'),
                 aws_secret_access_key=os.environ.get('AWS_SECRET_ACCESS_KEY'))
 
-    copy_files(context, f"mimeType='application/vnd.google-apps.folder' and name='{folder}'", s3, "dataspace", f"city-data/lidar/{target}")
-    doc_files(s3, "dataspace", f"city-data/lidar/{target}", "lidar")
-    
-    
-@mlrun.handler()
-def get_dtm(context, folder, target):
-    s3 = boto3.client('s3',
-                endpoint_url=os.environ.get('S3_ENDPOINT_URL'),
-                aws_access_key_id=os.environ.get('AWS_ACCESS_KEY_ID'),
-                aws_secret_access_key=os.environ.get('AWS_SECRET_ACCESS_KEY'))
-
-    copy_files(context, f"mimeType='application/vnd.google-apps.folder' and name='{folder}'", s3, "dataspace", f"city-data/dtm/{target}")
-    doc_files(s3, "dataspace", f"city-data/dtm/{target}", "dtm")
-    
-@mlrun.handler()
-def get_dsm(context, folder, target):
-    s3 = boto3.client('s3',
-                endpoint_url=os.environ.get('S3_ENDPOINT_URL'),
-                aws_access_key_id=os.environ.get('AWS_ACCESS_KEY_ID'),
-                aws_secret_access_key=os.environ.get('AWS_SECRET_ACCESS_KEY'))
-
-    copy_files(context, f"mimeType='application/vnd.google-apps.folder' and name='{folder}'", s3, "dataspace", f"city-data/dsm/{target}")
-    doc_files(s3, "dataspace", f"city-data/dsm/{target}", "dsm")
-    
-@mlrun.handler()
-def get_ortofoto_tiff(context):
-    s3 = boto3.client('s3',
-                endpoint_url=os.environ.get('S3_ENDPOINT_URL'),
-                aws_access_key_id=os.environ.get('AWS_ACCESS_KEY_ID'),
-                aws_secret_access_key=os.environ.get('AWS_SECRET_ACCESS_KEY'))
-
-    service = getGService(context)
-    
-    results = (service.files()
-           .list(q=f"mimeType='application/vnd.google-apps.folder' and name='RETTIFICHE_TIFF_RGBN_ETRF2000'", 
-                 pageSize=1, fields="files(id, name, mimeType)", supportsAllDrives=True, includeItemsFromAllDrives=True)
-           .execute())
-
-    root_items = results.get("files", [])
-    for item in root_items:
-        print(item["name"])
-        if item["name"] == 'RETTIFICHE_TIFF_RGBN_ETRF2000':
-            id = item["id"]
-            results = (service.files().list(q=f"'{id}' in parents", pageSize=1, fields="files(id, name, mimeType)", supportsAllDrives=True, includeItemsFromAllDrives=True).execute())
-            items = results.get("files", [])
-            for child_item in items:
-                print(child_item["name"])
-                if child_item["name"] == "RDN2008_GEOTIFF":
-                    copy_rec(service, child_item["id"], s3, "dataspace", "city-data/ortofoto/latest")
+    copy_files(project, f"mimeType='application/vnd.google-apps.folder' and name='{folder}'", s3, bucket, f"city-data/dsm/{target}", token_uri)
+    doc_files(s3, bucket, f"city-data/dsm/{target}", "dsm")
