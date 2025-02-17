@@ -99,7 +99,7 @@ def doc_files(s3, bucket: str, prefix: str, name: str):
     df.to_parquet(name +'.parquet')
     s3.upload_file(name +'.parquet', bucket, prefix + '/' + name +'.parquet', ExtraArgs={'ContentType': 'application/octet-stream'})
         
-def get_lidar(project, token_uri, folder, bucket, target: str = 'data'):
+def get_lidar(project, folder, bucket, target: str = 'data'):
     s3 = boto3.client('s3',
                 endpoint_url=os.environ.get('S3_ENDPOINT_URL'),
                 aws_access_key_id=os.environ.get('AWS_ACCESS_KEY_ID'),
@@ -108,7 +108,7 @@ def get_lidar(project, token_uri, folder, bucket, target: str = 'data'):
     copy_files(project, f"mimeType='application/vnd.google-apps.folder' and name='{folder}'", s3, bucket, f"city-data/lidar/{target}", token_uri)
     doc_files(s3, bucket, f"city-data/lidar/{target}", "lidar")
         
-def get_dtm(project, token_uri, folder, bucket, target: str = 'data'):
+def get_dtm(project, folder, bucket, target: str = 'data'):
     s3 = boto3.client('s3',
                 endpoint_url=os.environ.get('S3_ENDPOINT_URL'),
                 aws_access_key_id=os.environ.get('AWS_ACCESS_KEY_ID'),
@@ -117,7 +117,7 @@ def get_dtm(project, token_uri, folder, bucket, target: str = 'data'):
     copy_files(project, f"mimeType='application/vnd.google-apps.folder' and name='{folder}'", s3, bucket, f"city-data/dtm/{target}", token_uri)
     doc_files(s3, bucket, f"city-data/dtm/{target}", "dtm")
     
-def get_dsm(project, token_uri, folder, bucket, target: str = 'data'):
+def get_dsm(project, folder, bucket, target: str = 'data'):
     s3 = boto3.client('s3',
                 endpoint_url=os.environ.get('S3_ENDPOINT_URL'),
                 aws_access_key_id=os.environ.get('AWS_ACCESS_KEY_ID'),
