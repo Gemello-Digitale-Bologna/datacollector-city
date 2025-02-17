@@ -18,9 +18,9 @@ SCOPES = ["https://www.googleapis.com/auth/drive.readonly"]
 
 def getGService(project, token_uri):
     creds = None
-    token = token_uri.as_file()
+    token = token_uri.read_secret_value()
     try:
-        token_info = json.load(open(token))
+        token_info = json.loads(token)
         creds = Credentials.from_authorized_user_info(token_info, SCOPES)
         service = build("drive", "v3", credentials=creds)
     except HttpError as error:
@@ -104,6 +104,7 @@ def get_lidar(project, token_uri, folder, bucket, target: str = 'data'):
                 endpoint_url=os.environ.get('S3_ENDPOINT_URL'),
                 aws_access_key_id=os.environ.get('AWS_ACCESS_KEY_ID'),
                 aws_secret_access_key=os.environ.get('AWS_SECRET_ACCESS_KEY'))
+    token_uri = project.get_secret('token')
     copy_files(project, f"mimeType='application/vnd.google-apps.folder' and name='{folder}'", s3, bucket, f"city-data/lidar/{target}", token_uri)
     doc_files(s3, bucket, f"city-data/lidar/{target}", "lidar")
         
@@ -112,6 +113,7 @@ def get_dtm(project, token_uri, folder, bucket, target: str = 'data'):
                 endpoint_url=os.environ.get('S3_ENDPOINT_URL'),
                 aws_access_key_id=os.environ.get('AWS_ACCESS_KEY_ID'),
                 aws_secret_access_key=os.environ.get('AWS_SECRET_ACCESS_KEY'))
+    token_uri = project.get_secret('token')
     copy_files(project, f"mimeType='application/vnd.google-apps.folder' and name='{folder}'", s3, bucket, f"city-data/dtm/{target}", token_uri)
     doc_files(s3, bucket, f"city-data/dtm/{target}", "dtm")
     
@@ -120,6 +122,6 @@ def get_dsm(project, token_uri, folder, bucket, target: str = 'data'):
                 endpoint_url=os.environ.get('S3_ENDPOINT_URL'),
                 aws_access_key_id=os.environ.get('AWS_ACCESS_KEY_ID'),
                 aws_secret_access_key=os.environ.get('AWS_SECRET_ACCESS_KEY'))
-
+    token_uri = project.get_secret('token')
     copy_files(project, f"mimeType='application/vnd.google-apps.folder' and name='{folder}'", s3, bucket, f"city-data/dsm/{target}", token_uri)
     doc_files(s3, bucket, f"city-data/dsm/{target}", "dsm")
