@@ -40,7 +40,7 @@ def upload_file(s3, bucket: str, path: str, local_path: str, item_name: str):
     name = path + '/' + item_name
     s3.upload_file(local_path, bucket, name, ExtraArgs={'ContentType': 'application/octet-stream'})
 
-def copy_rec(service, folder_id, s3, bucket: str, destination_path: str):
+def copy_rec(service, folder_id, s3, bucket: str, destination_path: str, skip_folders=None):
     """Downloads recursively all content from a specific folder on Google Drive."""
     files = service.files()
     request = files.list(q=f"'{folder_id}' in parents", 
@@ -57,9 +57,11 @@ def copy_rec(service, folder_id, s3, bucket: str, destination_path: str):
 
             # If it's a folder, recursively download its content
             if item_type == "application/vnd.google-apps.folder":
-                print(f"Downloading folder {item_name}...")
-                if item_name != 'back':
-                    copy_rec(service, item_id, s3, bucket, destination_path + '/' + item_name)
+                if skip_folders and item_name in skip_folders:
+                    print(f"path excluded: {item_name}")
+                else:
+                    print(f"Downloading folder {item_name}...")
+                    copy_rec(service, item_id, s3, bucket, destination_path + '/' + item_name, skip_folders)
             else:
                 try:
                     head = s3.head_object(Bucket=bucket, Key=destination_path + '/' + item_name)
@@ -77,7 +79,7 @@ def copy_rec(service, folder_id, s3, bucket: str, destination_path: str):
                     # return
         request = files.list_next(request, results)
 
-def copy_files(project, query: str, s3, bucket: str, destination_path: str, token_uri):
+def copy_files(project, query: str, s3, bucket: str, destination_path: str, token_uri, skip_folders=None):
     service = getGService(project, token_uri)
     results = (service.files()
                .list(q=query, pageSize=1, fields="files(id, name, mimeType)", supportsAllDrives=True, includeItemsFromAllDrives=True)
@@ -85,7 +87,7 @@ def copy_files(project, query: str, s3, bucket: str, destination_path: str, toke
     print(results.get("files"))
     root_items = results.get("files", [])
     for item in root_items:
-        copy_rec(service, item["id"], s3, bucket, destination_path)
+        copy_rec(service, item["id"], s3, bucket, destination_path, skip_folders)
 
 def doc_files(s3, bucket: str, prefix: str, name: str):
     array = []
@@ -125,3 +127,21 @@ def get_dsm(project, folder, bucket, target: str = 'data'):
     token_uri = project.get_secret('token')
     copy_files(project, f"mimeType='application/vnd.google-apps.folder' and name='{folder}'", s3, bucket, f"city-data/dsm/{target}", token_uri)
     doc_files(s3, bucket, f"city-data/dsm/{target}", "dsm")
+
+def get_orto(project, folder, bucket, target: str = 'data', type: str = 'ortofoto'):
+    s3 = boto3.client('s3',
+                endpoint_url=os.environ.get('S3_ENDPOINT_URL'),
+                aws_access_key_id=os.environ.get('AWS_ACCESS_KEY_ID'),
+                aws_secret_access_key=os.environ.get('AWS_SECRET_ACCESS_KEY'))
+    token_uri = project.get_secret('token')
+    copy_files(project, f"mimeType='application/vnd.google-apps.folder' and name='{folder}'", s3, bucket, f"city-data/ortofoto/{target}", token_uri)
+    doc_files(s3, bucket, f"city-data/ortofoto/{target}", type)
+
+def get_foto(project, folder, bucket, target: str = 'data'):
+    s3 = boto3.client('s3',
+                endpoint_url=os.environ.get('S3_ENDPOINT_URL'),
+                aws_access_key_id=os.environ.get('AWS_ACCESS_KEY_ID'),
+                aws_secret_access_key=os.environ.get('AWS_SECRET_ACCESS_KEY'))
+    token_uri = project.get_secret('token')
+    copy_files(project, f"mimeType='application/vnd.google-apps.folder' and name='{folder}'", s3, bucket, f"city-data/foto_oblique/{target}", token_uri, skip_folders=['back', 'for', 'left', 'right'])
+    doc_files(s3, bucket, f"city-data/foto_oblique/{target}", type)
